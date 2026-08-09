@@ -1,40 +1,61 @@
+# Python and editor artifacts
 __pycache__/
 *.py[cod]
 *.pyo
-
 .idea/
 .vscode/
 .pytest_cache/
 .DS_Store
-
+Thumbs.db
 venv/
 .venv/
 env/
 
-datasets/*
+# Data: retain only the two fixed prompt tensors already committed in data/
+data/**
+!data/type7.npy
+!data/multi2.npy
+datasets/**
 !datasets/README.md
+dataset/
+dateset/
+images/
+inputs/
+targets/
+labels/
+splits/
+metadata/
+*.npz
+*.csv
+*.tsv
+*.json
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
 
-checkpoint/*
+# Checkpoints and experiment output
+checkpoint/**
 !checkpoint/README.md
-
-exps/
-results/
-runs/
-logs/
+checkpoints/
+weights/
 *.pth
 *.pt
 *.ckpt
-events.out.tfevents*
+*.onnx
+exps/
+experiments/
+runs/
+results/
+outputs/
+logs/
+*.log
+events.out.tfevents.*
 
+# Manuscript and local office files
 *.doc
 *.docx
 *.pdf
 *.ppt
 *.pptx
-*.drawio
-*.vsd
-*.vsdx
-
-_rendered*/
-_report_assets/
-_example_*.txt
