@@ -1,9 +1,4 @@
 # TIR-UPF
-A Unified Progressive Fusion Network with Adaptive Degradation Prompts for Multi-Weather Thermal Infrared Image Restoration
-
-Source-code archive version: **1.0.0**. The accompanying manuscript is under revision.
-
-The implementation includes a four-class degradation predictor, dynamic prompt fusion, a prompt-conditioned restoration backbone, and three restoration stages. This archive corrects runtime interfaces and usage instructions while retaining the existing model architecture and training defaults. Dataset images and trained checkpoints are not bundled.
 
 A Unified Progressive Fusion Network with Adaptive Degradation Prompts for Multi-Weather Thermal Infrared Image Restoration
 
