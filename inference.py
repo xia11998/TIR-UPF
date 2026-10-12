@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from dataset import InferSetLoader
 from models.predictor import DegradationPredictor
-from models.restormer_arch import TIRUPFRestorer
+from models.restormer_arch import TIR_UPF
 
 
 def build_parser():
@@ -115,15 +115,16 @@ def build_checkpoint_prompt(input_tensor, checkpoint, predictor, device):
 
 def main():
     args = build_parser().parse_args()
-    device = torch.device('cuda')
-    checkpoint = torch.load(args.weights, weights_only=False)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    checkpoint = torch.load(args.weights, map_location=device)
     config = checkpoint.get('ablation_config', default_ablation_config())
+    if not config.get('use_prompt_modulation', True):
+        raise ValueError('This backbone requires prompt modulation; use a compatible checkpoint.')
 
-    model = TIRUPFRestorer(
+    model = TIR_UPF(
         inp_channels=1,
         out_channels=1,
-        global_residual=config.get('global_residual', True),
-        use_prompt_modulation=config.get('use_prompt_modulation', True)
+        global_residual=config.get('global_residual', True)
     ).to(device)
     load_state_dict_flexible(model, checkpoint["state_dict"])
     model.eval()
@@ -146,9 +147,9 @@ def main():
 
     if args.cal_iqa:
         import pyiqa
-        niqe = pyiqa.create_metric("niqe", device='cuda')
-        nima = pyiqa.create_metric("nima", device='cuda')
-        musiq = pyiqa.create_metric("musiq", device='cuda')
+        niqe = pyiqa.create_metric("niqe", device=device)
+        nima = pyiqa.create_metric("nima", device=device)
+        musiq = pyiqa.create_metric("musiq", device=device)
         score_niqe = 0.
         score_nima = 0.
         score_musiq = 0.
