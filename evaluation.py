@@ -11,9 +11,9 @@ from torchvision.transforms import transforms
 from tqdm import tqdm
 
 import utils
-from dataset import PairedValSetLoader, TestSetLoader
+from dataset import PairedEvalSetLoader, TestSetLoader
 from models.predictor import DegradationPredictor
-from models.restormer_arch import TIRUPFRestorer
+from models.restormer_arch import TIR_UPF
 
 
 def build_parser():
@@ -50,6 +50,16 @@ def default_ablation_config():
 
 def save_img(filepath, img):
     img.save(filepath)
+
+
+def pad_to_multiple(tensor, multiple=8):
+    height, width = tensor.shape[-2:]
+    pad_h = (multiple - height % multiple) % multiple
+    pad_w = (multiple - width % multiple) % multiple
+    if pad_h == 0 and pad_w == 0:
+        return tensor
+    pad_mode = 'reflect' if height > pad_h and width > pad_w else 'replicate'
+    return F.pad(tensor, (0, pad_w, 0, pad_h), mode=pad_mode)
 
 
 def load_state_dict_flexible(module, state_dict):
@@ -121,15 +131,16 @@ def build_checkpoint_prompt(input_tensor, checkpoint, predictor, device):
 
 def main():
     args = build_parser().parse_args()
-    checkpoint = torch.load(args.weights, weights_only=False)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    checkpoint = torch.load(args.weights, map_location=device)
     config = checkpoint.get('ablation_config', default_ablation_config())
-    device = torch.device('cuda')
+    if not config.get('use_prompt_modulation', True):
+        raise ValueError('This backbone requires prompt modulation; use a compatible checkpoint.')
 
-    model = TIRUPFRestorer(
+    model = TIR_UPF(
         inp_channels=1,
         out_channels=1,
-        global_residual=config.get('global_residual', True),
-        use_prompt_modulation=config.get('use_prompt_modulation', True)
+        global_residual=config.get('global_residual', True)
     ).to(device)
     load_state_dict_flexible(model, checkpoint["state_dict"])
     model.eval()
@@ -158,7 +169,7 @@ def main():
     scenario = args.deg_scenario
     subset = args.subset
     if use_custom_pairs:
-        dataset = PairedValSetLoader(args.input_dir, args.target_dir)
+        dataset = PairedEvalSetLoader(input_dir=args.input_dir, target_dir=args.target_dir)
     else:
         dataset = TestSetLoader(args.dataset_dir, args.dataset_name, scenario, subset)
     loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
@@ -187,15 +198,10 @@ def main():
     ssim_val = []
 
     for _, data_val in enumerate(tbar):
-        input_ = data_val[0].to(device)
+        input_ = pad_to_multiple(data_val[0].to(device))
         label = data_val[1].to(device)
-        if use_custom_pairs:
-            h = int(data_val[3].item())
-            w = int(data_val[4].item())
-            file_name = data_val[5][0]
-        else:
-            file_name = data_val[-1][0]
-            h, w = data_val[2]
+        h, w = (int(size.item()) for size in data_val[2])
+        file_name = data_val[-1][0]
 
         with torch.no_grad():
             restored = input_
@@ -211,10 +217,10 @@ def main():
                     restored = model([restored, typep[type_dic[prompt_name]].unsqueeze(0), multip[sce_dic[scenario]]])
                     restored = torch.clamp(restored, 0, 1)
 
-            restored_eval = restored[:, :, :h, :w] if use_custom_pairs else restored
+            restored_eval = restored[:, :, :h, :w]
             for res, tar in zip(restored_eval, label):
                 psnr_val.append(utils.torchPSNR(res, tar))
-                ssim_val.append(utils.torchSSIM(res, tar))
+                ssim_val.append(utils.torchSSIM(res.unsqueeze(0), tar.unsqueeze(0)))
 
             restored_pil = transforms.ToPILImage()(restored_eval[0, 0, :h, :w].detach().cpu())
             tbar.set_description(
@@ -234,7 +240,8 @@ def main():
 
     print("Prompt mode: %s" % prompt_mode)
     print("PSNR: %.4f, SSIM: %.4f" % (psnr_val, ssim_val))
-    print(f"Files saved at {os.path.join(out_dir, args.dataset_name, scenario, subset)}")
+    output_dir = out_dir if use_custom_pairs else os.path.join(out_dir, args.dataset_name, scenario, subset)
+    print(f"Files saved at {output_dir}")
     print('finish !')
 
 
