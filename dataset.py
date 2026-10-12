@@ -491,12 +491,31 @@ class PairedTrainSetLoader(Dataset):
 
 
 class PairedEvalSetLoader(Dataset):
-    """Paired validation loader used by train.py."""
+    """Paired validation loader for dataset splits or explicit input/target folders."""
 
-    def __init__(self, dataset_dir, split='test'):
+    def __init__(self, dataset_dir=None, split='test', input_dir=None, target_dir=None):
         super().__init__()
         self.dataset_dir = dataset_dir
         self.split = split
+
+        if input_dir is not None or target_dir is not None:
+            if not input_dir or not target_dir:
+                raise ValueError('Both input_dir and target_dir are required for paired evaluation.')
+            self.input_dir = os.fspath(input_dir)
+            self.target_dir = os.fspath(target_dir)
+            for folder in (self.input_dir, self.target_dir):
+                if not os.path.isdir(folder):
+                    raise FileNotFoundError(f'Paired image folder not found: {folder}')
+            self.image_list = _list_images(self.input_dir)
+            if not self.image_list:
+                raise ValueError(f'No input images found in {self.input_dir}')
+            for name in self.image_list:
+                if not os.path.isfile(os.path.join(self.target_dir, name)):
+                    raise FileNotFoundError(f'Paired target image not found: {name}')
+            return
+
+        if dataset_dir is None:
+            raise ValueError('dataset_dir is required when explicit image folders are not supplied.')
 
         split_dir = os.path.join(dataset_dir, split)
         self.input_dir = _first_existing_dir([
@@ -532,6 +551,8 @@ class PairedEvalSetLoader(Dataset):
 
         input_img = _load_grayscale(input_path)
         target_img = _load_grayscale(target_path)
+        if input_img.shape != target_img.shape:
+            raise ValueError(f'Paired image dimensions do not match: {img_name}')
         h, w = target_img.shape
 
         input_tensor = torch.from_numpy(np.ascontiguousarray(input_img[np.newaxis, :]))
