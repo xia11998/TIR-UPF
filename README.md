@@ -5,7 +5,12 @@ Source-code archive version: **1.0.0**. The accompanying manuscript is under rev
 
 The implementation includes a four-class degradation predictor, dynamic prompt fusion, a prompt-conditioned restoration backbone, and three restoration stages. This archive corrects runtime interfaces and usage instructions while retaining the existing model architecture and training defaults. Dataset images and trained checkpoints are not bundled.
 
+A Unified Progressive Fusion Network with Adaptive Degradation Prompts for Multi-Weather Thermal Infrared Image Restoration
+
+This package contains the method implementation that structurally matches the manuscript: a four-class degradation predictor, prompt-conditioned restoration backbone, dynamic prompt fusion, and a three-stage restoration configuration. The released training defaults use the manuscript-level configuration: full predictor mode, dynamic prompt modulation, classification/orthogonality/edge losses, global residual learning, and three restoration stages.
+
 Source repository: https://github.com/xia11998/TIR-UPF
+
 
 ## Included source files
 
@@ -93,11 +98,4 @@ The script reports PSNR/SSIM and saves restored images. Input and target filenam
 
 Inspect supported options with `python train.py --help`, `python inference.py --help`, and `python evaluation.py --help`.
 
-## Archive and License
-
-This is a source-code archive, not a bundle of dataset images or manuscript figures. Actual experiment splits, weather-degradation generation settings, and any trained checkpoint must be supplied separately for a full reproduction of manuscript results.
-
-For a manual Zenodo upload, upload the source ZIP as resource type **Software**, enter the software authors, version `1.0.0`, description, and MIT license, and link the GitHub repository. Alternatively, enable the repository in Zenodo before publishing the corresponding GitHub Release. Add the assigned version DOI to the manuscript only after the record is published; no DOI is preassigned in this archive.
-
-See [LICENSE](LICENSE) and the retained source headers for upstream attribution.
 
